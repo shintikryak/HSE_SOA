@@ -1,5 +1,5 @@
-from fastapi import FastAPI, Request, Response
-import httpx
+from fastapi import FastAPI, Request, Response # type: ignore
+import httpx # type: ignore
 
 app = FastAPI(title="API Proxy Service")
 
