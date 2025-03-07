@@ -1,5 +1,6 @@
 FROM tiangolo/uvicorn-gunicorn-fastapi:python3.11
 WORKDIR /app
-COPY . /app
-RUN pip install --no-cache-dir bcrypt==4.0.1 sqlalchemy psycopg2-binary passlib[bcrypt] pyjwt
-CMD ["gunicorn", "main:app", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:80"]
+COPY requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+COPY user-service/src /app/src
+CMD ["gunicorn", "src.main:app", "-k", "uvicorn.workers.UvicornWorker", "-b", "0.0.0.0:80"]
