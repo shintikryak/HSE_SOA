@@ -1,0 +1,145 @@
+openapi: 3.0.0
+info:
+  title: User API
+  version: "1.0"
+paths:
+  /register:
+    post:
+      summary: Регистрация нового пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        "200":
+          description: Успешная регистрация
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserOut'
+        "400":
+          description: Ошибка регистрации
+  /login:
+    post:
+      summary: Аутентификация пользователя
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+              required:
+                - username
+                - password
+      responses:
+        "200":
+          description: Успешная аутентификация, возвращает токен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  token_type:
+                    type: string
+        "400":
+          description: Неверный логин или пароль
+  /profile:
+    get:
+      summary: Получение данных профиля
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Данные профиля пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserOut'
+        "401":
+          description: Неавторизованный
+    put:
+      summary: Обновление данных профиля
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        "200":
+          description: Обновленные данные профиля
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserOut'
+        "401":
+          description: Неавторизованный
+components:
+  schemas:
+    UserBase:
+      type: object
+      properties:
+        login:
+          type: string
+        email:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        date_of_birth:
+          type: string
+          format: date
+        phone:
+          type: string
+    UserCreate:
+      allOf:
+        - $ref: '#/components/schemas/UserBase'
+        - type: object
+          required:
+            - password
+          properties:
+            password:
+              type: string
+    UserOut:
+      allOf:
+        - $ref: '#/components/schemas/UserBase'
+        - type: object
+          properties:
+            id:
+              type: integer
+            created_at:
+              type: string
+              format: date-time
+            updated_at:
+              type: string
+              format: date-time
+    UserUpdate:
+      type: object
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        date_of_birth:
+          type: string
+          format: date
+        email:
+          type: string
+        phone:
+          type: string
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer

@@ -83,13 +83,6 @@ model {
         }
       }
       
-      component posts_images_storage 'Minio Storage' {
-        description 'Storage for images related to posts and comments'
-        style {
-          shape storage
-        }
-      }
-      
       events_broker -> stats_service 'Sends event data'
       api_gateway -> events_broker 'Forwards likes, posts, views'
       user_service_api -> user_db 'Fetches user data'
@@ -98,7 +91,6 @@ model {
       stats_api -> stats_db 'Queries statistics'
       api_gateway -> posts_comments_api 'Manages posts and comments'
       posts_comments_api -> posts_comments_db 'Stores posts and comments'
-      posts_comments_api -> posts_images_storage 'Stores images'
     }
     
     ui -> api_gateway 'Sends HTTPS requests'

@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+gunicorn
+bcrypt==4.0.1
+passlib[bcrypt]
+sqlalchemy
+psycopg2-binary
+pydantic
+pydantic[email]
+pyjwt
+httpx
+pytest
+python-multipart
