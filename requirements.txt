@@ -11,3 +11,5 @@ pyjwt
 httpx
 pytest
 python-multipart
+grpcio
+grpcio-tools
