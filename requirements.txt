@@ -13,3 +13,4 @@ pytest
 python-multipart
 grpcio
 grpcio-tools
+protobuf
