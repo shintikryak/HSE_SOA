@@ -29,7 +29,6 @@ services:
     ports:
       - "50051:50051"
     environment:
-      # При необходимости можно указать DATABASE_URL явно, но дефолт уже настроен в database.py
       - DATABASE_URL=postgresql://postgres:postgres@db_post:5432/post_service_db
     depends_on:
       - db_post 
