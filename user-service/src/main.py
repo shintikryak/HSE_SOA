@@ -5,6 +5,7 @@ from . import models, schemas
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
 import jwt
 
 # Конфигурация JWT
@@ -17,8 +18,19 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="User Service with JWT")
 
+# Добавляем CORS middleware для разрешения запросов из других источников (например, Swagger UI API-сервиса)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # или ограничьте список, например, ["http://localhost:8000"]
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+# Обновляем OAuth2PasswordBearer, чтобы tokenUrl был внешним URL, доступным из браузера
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8001/login")
 
 def get_db():
     db = SessionLocal()

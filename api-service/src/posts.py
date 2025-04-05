@@ -1,13 +1,19 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Security
+from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, Field
 from typing import List, Optional
+import httpx
 import grpc
 import post_pb2
 import post_pb2_grpc
 
 router = APIRouter(tags=["Posts"])
 
-# Pydantic модели для запросов и ответов
+# Объявляем схему OAuth2.
+# tokenUrl указывает на внешний адрес логина user‑сервиса,
+# чтобы Swagger знал, куда отправлять запрос за токеном.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="http://localhost:8001/login")
+
 class PostCreate(BaseModel):
     title: str = Field(..., description="Заголовок поста")
     description: Optional[str] = Field("", description="Описание поста")
@@ -34,123 +40,155 @@ class PostList(BaseModel):
     posts: List[PostOut]
     total: int
 
-# Зависимость для получения текущего пользователя (можно будет потом заменить на реальную логику)
-def get_current_user():
-    # Для демонстрации возвращаем тестового пользователя
-    return {"id": 1}
+# Функция проверки JWT: отправляем запрос к user‑сервису для валидации токена.
+async def validate_jwt_token(token: str) -> dict:
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.get(
+                "http://user-service/profile",
+                headers={"Authorization": f"Bearer {token}"}
+            )
+            response.raise_for_status()
+        except httpx.HTTPError:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    return response.json()
 
-# Функция для создания gRPC-канала и клиента к post-service
+# Функция для получения gRPC‑клиента к post‑сервису.
 def get_post_service_stub():
     channel = grpc.insecure_channel("post-service:50051")
-    stub = post_pb2_grpc.PostServiceStub(channel)
-    return stub
+    return post_pb2_grpc.PostServiceStub(channel)
 
-@router.post("/posts", response_model=PostOut, status_code=status.HTTP_201_CREATED)
-async def create_post(post: PostCreate, current_user: dict = Depends(get_current_user)):
+# Эндпоинты защищены схемой OAuth2: параметр token берётся через Security(oauth2_scheme).
+@router.post("", response_model=PostOut, status_code=status.HTTP_201_CREATED)
+async def create_post(
+    post: PostCreate,
+    token: str = Security(oauth2_scheme)
+):
+    user_data = await validate_jwt_token(token)
     stub = get_post_service_stub()
     grpc_post = post_pb2.Post(
         title=post.title,
-        description=post.description or "",
-        creator_id=current_user["id"],
+        description=post.description,
+        creator_id=user_data["id"],
         created_at="",
         updated_at="",
         is_private=post.is_private,
         tags=post.tags
     )
-    request_grpc = post_pb2.CreatePostRequest(post=grpc_post)
-    response = stub.CreatePost(request_grpc)
-    if response.error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=response.error)
+    req = post_pb2.CreatePostRequest(post=grpc_post)
+    resp = stub.CreatePost(req)
+    if resp.error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=resp.error)
     return PostOut(
-        id=response.post.id,
-        title=response.post.title,
-        description=response.post.description,
-        creator_id=response.post.creator_id,
-        created_at=response.post.created_at,
-        updated_at=response.post.updated_at,
-        is_private=response.post.is_private,
-        tags=response.post.tags
+        id=resp.post.id,
+        title=resp.post.title,
+        description=resp.post.description,
+        creator_id=resp.post.creator_id,
+        created_at=resp.post.created_at,
+        updated_at=resp.post.updated_at,
+        is_private=resp.post.is_private,
+        tags=resp.post.tags
     )
 
-@router.delete("/posts/{post_id}", response_model=PostOut)
-async def delete_post(post_id: str, current_user: dict = Depends(get_current_user)):
+@router.get("", response_model=PostList)
+async def list_posts(
+    page: int = 1,
+    size: int = 10,
+    token: str = Security(oauth2_scheme)
+):
+    user_data = await validate_jwt_token(token)
     stub = get_post_service_stub()
-    request_grpc = post_pb2.DeletePostRequest(id=post_id, user_id=current_user["id"])
-    response = stub.DeletePost(request_grpc)
-    if response.error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=response.error)
+    req = post_pb2.ListPostsRequest(page=page, size=size, user_id=user_data["id"])
+    resp = stub.ListPosts(req)
+    if resp.error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=resp.error)
+    posts = [
+        PostOut(
+            id=p.id,
+            title=p.title,
+            description=p.description,
+            creator_id=p.creator_id,
+            created_at=p.created_at,
+            updated_at=p.updated_at,
+            is_private=p.is_private,
+            tags=p.tags
+        ) for p in resp.posts
+    ]
+    return PostList(posts=posts, total=resp.total)
+
+@router.get("/{post_id}", response_model=PostOut)
+async def get_post(
+    post_id: str,
+    token: str = Security(oauth2_scheme)
+):
+    user_data = await validate_jwt_token(token)
+    stub = get_post_service_stub()
+    req = post_pb2.GetPostRequest(id=post_id, user_id=user_data["id"])
+    resp = stub.GetPost(req)
+    if resp.error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=resp.error)
     return PostOut(
-        id=response.post.id,
-        title=response.post.title,
-        description=response.post.description,
-        creator_id=response.post.creator_id,
-        created_at=response.post.created_at,
-        updated_at=response.post.updated_at,
-        is_private=response.post.is_private,
-        tags=response.post.tags
+        id=resp.post.id,
+        title=resp.post.title,
+        description=resp.post.description,
+        creator_id=resp.post.creator_id,
+        created_at=resp.post.created_at,
+        updated_at=resp.post.updated_at,
+        is_private=resp.post.is_private,
+        tags=resp.post.tags
     )
 
-@router.put("/posts/{post_id}", response_model=PostOut)
-async def update_post(post_id: str, post: PostUpdate, current_user: dict = Depends(get_current_user)):
+@router.put("/{post_id}", response_model=PostOut)
+async def update_post(
+    post_id: str,
+    post: PostUpdate,
+    token: str = Security(oauth2_scheme)
+):
+    user_data = await validate_jwt_token(token)
     stub = get_post_service_stub()
     grpc_post = post_pb2.Post(
         id=post_id,
         title=post.title or "",
         description=post.description or "",
-        creator_id=current_user["id"],
+        creator_id=user_data["id"],
         created_at="",
         updated_at="",
         is_private=post.is_private if post.is_private is not None else False,
-        tags=post.tags if post.tags is not None else []
+        tags=post.tags or []
     )
-    request_grpc = post_pb2.UpdatePostRequest(post=grpc_post)
-    response = stub.UpdatePost(request_grpc)
-    if response.error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=response.error)
+    req = post_pb2.UpdatePostRequest(post=grpc_post)
+    resp = stub.UpdatePost(req)
+    if resp.error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=resp.error)
     return PostOut(
-        id=response.post.id,
-        title=response.post.title,
-        description=response.post.description,
-        creator_id=response.post.creator_id,
-        created_at=response.post.created_at,
-        updated_at=response.post.updated_at,
-        is_private=response.post.is_private,
-        tags=response.post.tags
+        id=resp.post.id,
+        title=resp.post.title,
+        description=resp.post.description,
+        creator_id=resp.post.creator_id,
+        created_at=resp.post.created_at,
+        updated_at=resp.post.updated_at,
+        is_private=resp.post.is_private,
+        tags=resp.post.tags
     )
 
-@router.get("/posts/{post_id}", response_model=PostOut)
-async def get_post(post_id: str, current_user: dict = Depends(get_current_user)):
+@router.delete("/{post_id}", response_model=PostOut)
+async def delete_post(
+    post_id: str,
+    token: str = Security(oauth2_scheme)
+):
+    user_data = await validate_jwt_token(token)
     stub = get_post_service_stub()
-    request_grpc = post_pb2.GetPostRequest(id=post_id, user_id=current_user["id"])
-    response = stub.GetPost(request_grpc)
-    if response.error:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=response.error)
+    req = post_pb2.DeletePostRequest(id=post_id, user_id=user_data["id"])
+    resp = stub.DeletePost(req)
+    if resp.error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=resp.error)
     return PostOut(
-        id=response.post.id,
-        title=response.post.title,
-        description=response.post.description,
-        creator_id=response.post.creator_id,
-        created_at=response.post.created_at,
-        updated_at=response.post.updated_at,
-        is_private=response.post.is_private,
-        tags=response.post.tags
+        id=resp.post.id,
+        title=resp.post.title,
+        description=resp.post.description,
+        creator_id=resp.post.creator_id,
+        created_at=resp.post.created_at,
+        updated_at=resp.post.updated_at,
+        is_private=resp.post.is_private,
+        tags=resp.post.tags
     )
-
-@router.get("/posts", response_model=PostList)
-async def list_posts(page: int = 1, size: int = 10, current_user: dict = Depends(get_current_user)):
-    stub = get_post_service_stub()
-    request_grpc = post_pb2.ListPostsRequest(page=page, size=size, user_id=current_user["id"])
-    response = stub.ListPosts(request_grpc)
-    if response.error:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=response.error)
-    posts = [PostOut(
-        id=p.id,
-        title=p.title,
-        description=p.description,
-        creator_id=p.creator_id,
-        created_at=p.created_at,
-        updated_at=p.updated_at,
-        is_private=p.is_private,
-        tags=p.tags
-    ) for p in response.posts]
-    return PostList(posts=posts, total=response.total)

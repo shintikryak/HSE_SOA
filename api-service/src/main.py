@@ -4,11 +4,15 @@ from posts import router as posts_router
 
 app = FastAPI(title="API Proxy Service")
 
-app.include_router(posts_router)
+app.include_router(posts_router, prefix="/posts")
 
 USER_SERVICE_URL = "http://user-service"
 
-@app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+@app.api_route(
+    "/{path:path}",
+    methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    include_in_schema=False
+)
 async def proxy(request: Request, path: str):
     async with httpx.AsyncClient() as client:
         url = f"{USER_SERVICE_URL}/{path}"
