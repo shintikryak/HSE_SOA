@@ -1,7 +1,7 @@
 services:
   user-service:
     build:
-      context: .           # корень проекта
+      context: .
       dockerfile: user-service/Dockerfile
     container_name: user_service
     ports:
@@ -13,13 +13,25 @@ services:
 
   api-service:
     build:
-      context: .           # аналогично, если requirements.txt лежит в корне
+      context: .
       dockerfile: api-service/Dockerfile
     container_name: api_service
     ports:
       - "8000:80"
     depends_on:
       - user-service
+
+  post-service:
+    build:
+      context: .
+      dockerfile: post-service/Dockerfile
+    container_name: post_service
+    ports:
+      - "50051:50051"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db_post:5432/post_service_db
+    depends_on:
+      - db_post 
 
   db:
     image: postgres:13
@@ -33,5 +45,18 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  db_post:
+    image: postgres:13
+    container_name: postgres_db_post
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: post_service_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data_post:/var/lib/postgresql/data
+
 volumes:
   postgres_data:
+  postgres_data_post:
