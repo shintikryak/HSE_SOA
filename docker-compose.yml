@@ -1,4 +1,45 @@
 services:
+  kafka:
+    image: apache/kafka-native:3.8.0
+    container_name: kafka
+    hostname: kafka
+    # запускаем от root, чтобы volume был доступен для записи
+    user: root
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      # обязательная переменная для KRaft
+      CLUSTER_ID: "dev-cluster"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_NODE_ID: "1"
+      KAFKA_LISTENERS: "BROKER://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "BROKER://kafka:9092"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "BROKER"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "BROKER:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_LOG_RETENTION_HOURS: "168"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      # убираем ошибку с tools-log4j.properties
+      # KAFKA_LOG4J_OPTS: "-Dlog4j.configuration=file:/opt/kafka/config/log4j.properties"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+
   user-service:
     build:
       context: .
@@ -8,8 +49,10 @@ services:
       - "8001:80"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/users_db
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     depends_on:
       - db
+      - kafka
 
   api-service:
     build:
@@ -30,8 +73,10 @@ services:
       - "50051:50051"
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@db_post:5432/post_service_db
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     depends_on:
-      - db_post 
+      - db_post
+      - kafka
 
   db:
     image: postgres:13
@@ -60,3 +105,4 @@ services:
 volumes:
   postgres_data:
   postgres_data_post:
+  kafka_data:

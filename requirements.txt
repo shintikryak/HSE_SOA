@@ -14,3 +14,4 @@ python-multipart
 grpcio
 grpcio-tools
 protobuf
+confluent-kafka
