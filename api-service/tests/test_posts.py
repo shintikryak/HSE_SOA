@@ -208,3 +208,114 @@ def test_delete_post_success(mock_get_stub, mock_validate_token):
     assert response.status_code == 200
     data = response.json()
     assert data["title"] == "Deleted Post"
+
+@patch("src.posts.validate_jwt_token", new_callable=AsyncMock)
+@patch("src.posts.get_post_service_stub")
+def test_view_post_success(mock_get_stub, mock_validate_token):
+    mock_validate_token.return_value = {"id": 123}
+
+    dummy_stub = MagicMock()
+    dummy_stub.ViewPost = MagicMock()
+    mock_get_stub.return_value = dummy_stub
+
+    headers = {"Authorization": "Bearer dummy_token"}
+    response = client.post("/posts/1/view", headers=headers)
+
+    assert response.status_code == 204
+    dummy_stub.ViewPost.assert_called_once()
+    req = dummy_stub.ViewPost.call_args.args[0]
+    assert req.post_id == "1"
+    assert req.user_id == 123
+
+@patch("src.posts.validate_jwt_token", new_callable=AsyncMock)
+@patch("src.posts.get_post_service_stub")
+def test_like_post_success(mock_get_stub, mock_validate_token):
+    mock_validate_token.return_value = {"id": 456}
+
+    dummy_stub = MagicMock()
+    dummy_stub.LikePost = MagicMock()
+    mock_get_stub.return_value = dummy_stub
+
+    headers = {"Authorization": "Bearer dummy_token"}
+    response = client.post("/posts/42/like", headers=headers)
+
+    assert response.status_code == 204
+    dummy_stub.LikePost.assert_called_once()
+    req = dummy_stub.LikePost.call_args.args[0]
+    assert req.post_id == "42"
+    assert req.user_id == 456
+
+def dummy_comment_post(request):
+    return SimpleNamespace(
+        id="99",
+        post_id=request.post_id,
+        user_id=request.user_id,
+        text=request.text,
+        created_at=request.created_at,
+    )
+
+@patch("src.posts.validate_jwt_token", new_callable=AsyncMock)
+@patch("src.posts.get_post_service_stub")
+def test_comment_post_success(mock_get_stub, mock_validate_token):
+    mock_validate_token.return_value = {"id": 777}
+
+    dummy_stub = MagicMock()
+    dummy_stub.CommentPost = MagicMock(side_effect=dummy_comment_post)
+    mock_get_stub.return_value = dummy_stub
+
+    headers = {
+        "Authorization": "Bearer dummy_token",
+        "Content-Type": "application/json"
+    }
+    payload = {"text": "Hello world!"}
+    response = client.post("/posts/7/comments", headers=headers, json=payload)
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["id"] == "99"
+    assert data["post_id"] == "7"
+    assert data["user_id"] == 777
+    assert data["text"] == "Hello world!"
+    assert "created_at" in data
+
+    req = dummy_stub.CommentPost.call_args.args[0]
+    assert req.post_id == "7"
+    assert req.user_id == 777
+    assert req.text == "Hello world!"
+    assert isinstance(req.created_at, str) and len(req.created_at) > 0
+
+def dummy_list_comments(request):
+    c1 = SimpleNamespace(
+        id="1", post_id=request.post_id, user_id=1,
+        text="First", created_at="2025-05-01T00:00:00"
+    )
+    c2 = SimpleNamespace(
+        id="2", post_id=request.post_id, user_id=1,
+        text="Second", created_at="2025-05-01T00:01:00"
+    )
+    return SimpleNamespace(comments=[c1, c2], total=2)
+
+@patch("src.posts.get_post_service_stub")
+def test_list_comments_success(mock_get_stub):
+    dummy_stub = MagicMock()
+    dummy_stub.ListComments = MagicMock(side_effect=dummy_list_comments)
+    mock_get_stub.return_value = dummy_stub
+
+    headers = {"Authorization": "Bearer dummy_token"}
+    response = client.get("/posts/100/comments?page=1&size=2", headers=headers)
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 2
+    assert isinstance(data["comments"], list) and len(data["comments"]) == 2
+
+    first = data["comments"][0]
+    assert first["id"] == "1"
+    assert first["post_id"] == "100"
+    assert first["text"] == "First"
+    assert first["created_at"] == "2025-05-01T00:00:00"
+
+    req = dummy_stub.ListComments.call_args.args[0]
+    assert req.post_id == "100"
+    assert req.page == 1
+    assert req.size == 2

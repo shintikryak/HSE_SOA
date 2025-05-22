@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 import jwt
+from .kafka_producer import publish
 
 # Конфигурация JWT
 SECRET_KEY = "your_secret_key"
@@ -21,7 +22,7 @@ app = FastAPI(title="User Service with JWT")
 # Добавляем CORS middleware для разрешения запросов из других источников (например, Swagger UI API-сервиса)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # или ограничьте список, например, ["http://localhost:8000"]
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -88,6 +89,10 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+    publish("user-registration", {
+        "user_id": db_user.id,
+        "registered_at": db_user.created_at.isoformat()
+    })
     return db_user
 
 # Логин и генерация JWT токена

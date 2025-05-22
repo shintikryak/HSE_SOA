@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, status, Security
+from datetime import datetime
+from fastapi import APIRouter, HTTPException, status, Security, Response
 from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel, Field
 from typing import List, Optional
@@ -38,6 +39,20 @@ class PostOut(BaseModel):
 
 class PostList(BaseModel):
     posts: List[PostOut]
+    total: int
+
+class CommentIn(BaseModel):
+    text: str = Field(..., description="Текст комментария")
+
+class CommentOut(BaseModel):
+    id: str
+    post_id: str
+    user_id: int
+    text: str
+    created_at: str
+
+class CommentsList(BaseModel):
+    comments: List[CommentOut]
     total: int
 
 # Функция проверки JWT: отправляем запрос к user‑сервису для валидации токена.
@@ -191,4 +206,53 @@ async def delete_post(
         updated_at=resp.post.updated_at,
         is_private=resp.post.is_private,
         tags=resp.post.tags
+    )
+
+@router.post("/{post_id}/view", status_code=204)
+async def view_post(post_id: str, token: str = Security(oauth2_scheme)):
+    user = await validate_jwt_token(token)
+    stub = get_post_service_stub()
+    stub.ViewPost(post_pb2.ViewRequest(post_id=post_id, user_id=user["id"]))
+    return Response(status_code=204)
+
+@router.post("/{post_id}/like", status_code=204)
+async def like_post(post_id: str, token: str = Security(oauth2_scheme)):
+    user = await validate_jwt_token(token)
+    stub = get_post_service_stub()
+    stub.LikePost(post_pb2.LikeRequest(post_id=post_id, user_id=user["id"]))
+    return Response(status_code=204)
+
+@router.post("/{post_id}/comments", response_model=CommentOut, status_code=201)
+async def comment_post(post_id: str, comment: CommentIn, token: str = Security(oauth2_scheme)):
+    user = await validate_jwt_token(token)
+    stub = get_post_service_stub()
+    grpc_comment = stub.CommentPost(post_pb2.CommentRequest(
+        post_id=post_id,
+        user_id=user["id"],
+        text=comment.text,
+        created_at=datetime.utcnow().isoformat(),
+    ))
+    return CommentOut(
+        id=grpc_comment.id,
+        post_id=grpc_comment.post_id,
+        user_id=grpc_comment.user_id,
+        text=grpc_comment.text,
+        created_at=grpc_comment.created_at,
+    )
+
+@router.get("/{post_id}/comments", response_model=CommentsList)
+async def list_comments(post_id: str, page: int = 1, size: int = 10, token: str = Security(oauth2_scheme)):
+    stub = get_post_service_stub()
+    resp = stub.ListComments(post_pb2.ListCommentsRequest(post_id=post_id, page=page, size=size))
+    return CommentsList(
+        comments=[
+            CommentOut(
+                id=c.id,
+                post_id=c.post_id,
+                user_id=c.user_id,
+                text=c.text,
+                created_at=c.created_at,
+            ) for c in resp.comments
+        ],
+        total=resp.total
     )
