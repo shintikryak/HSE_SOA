@@ -1,10 +1,12 @@
 from fastapi import FastAPI, Request, Response
 import httpx
 from posts import router as posts_router
+from stats import router as stats_router
 
 app = FastAPI(title="API Proxy Service")
 
 app.include_router(posts_router, prefix="/posts")
+app.include_router(stats_router)
 
 USER_SERVICE_URL = "http://user-service"
 

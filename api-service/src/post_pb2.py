@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\npost.proto\x12\x05posts\"\x94\x01\n\x04Post\x12\n\n\x02id\x18\x01 \x01(\t\x12\r\n\x05title\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x12\n\ncreator_id\x18\x04 \x01(\x05\x12\x12\n\ncreated_at\x18\x05 \x01(\t\x12\x12\n\nupdated_at\x18\x06 \x01(\t\x12\x12\n\nis_private\x18\x07 \x01(\x08\x12\x0c\n\x04tags\x18\x08 \x03(\t\".\n\x11\x43reatePostRequest\x12\x19\n\x04post\x18\x01 \x01(\x0b\x32\x0b.posts.Post\"0\n\x11\x44\x65letePostRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\x05\".\n\x11UpdatePostRequest\x12\x19\n\x04post\x18\x01 \x01(\x0b\x32\x0b.posts.Post\"-\n\x0eGetPostRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\x05\"?\n\x10ListPostsRequest\x12\x0c\n\x04page\x18\x01 \x01(\x05\x12\x0c\n\x04size\x18\x02 \x01(\x05\x12\x0f\n\x07user_id\x18\x03 \x01(\x05\"8\n\x0cPostResponse\x12\x19\n\x04post\x18\x01 \x01(\x0b\x32\x0b.posts.Post\x12\r\n\x05\x65rror\x18\x02 \x01(\t\"M\n\x11ListPostsResponse\x12\x1a\n\x05posts\x18\x01 \x03(\x0b\x32\x0b.posts.Post\x12\r\n\x05total\x18\x02 \x01(\x05\x12\r\n\x05\x65rror\x18\x03 \x01(\t2\xbb\x02\n\x0bPostService\x12;\n\nCreatePost\x12\x18.posts.CreatePostRequest\x1a\x13.posts.PostResponse\x12;\n\nDeletePost\x12\x18.posts.DeletePostRequest\x1a\x13.posts.PostResponse\x12;\n\nUpdatePost\x12\x18.posts.UpdatePostRequest\x1a\x13.posts.PostResponse\x12\x35\n\x07GetPost\x12\x15.posts.GetPostRequest\x1a\x13.posts.PostResponse\x12>\n\tListPosts\x12\x17.posts.ListPostsRequest\x1a\x18.posts.ListPostsResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\npost.proto\x12\x05posts\"\x94\x01\n\x04Post\x12\n\n\x02id\x18\x01 \x01(\t\x12\r\n\x05title\x18\x02 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x03 \x01(\t\x12\x12\n\ncreator_id\x18\x04 \x01(\x05\x12\x12\n\ncreated_at\x18\x05 \x01(\t\x12\x12\n\nupdated_at\x18\x06 \x01(\t\x12\x12\n\nis_private\x18\x07 \x01(\x08\x12\x0c\n\x04tags\x18\x08 \x03(\t\".\n\x11\x43reatePostRequest\x12\x19\n\x04post\x18\x01 \x01(\x0b\x32\x0b.posts.Post\"0\n\x11\x44\x65letePostRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\x05\".\n\x11UpdatePostRequest\x12\x19\n\x04post\x18\x01 \x01(\x0b\x32\x0b.posts.Post\"-\n\x0eGetPostRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\x05\"?\n\x10ListPostsRequest\x12\x0c\n\x04page\x18\x01 \x01(\x05\x12\x0c\n\x04size\x18\x02 \x01(\x05\x12\x0f\n\x07user_id\x18\x03 \x01(\x05\"8\n\x0cPostResponse\x12\x19\n\x04post\x18\x01 \x01(\x0b\x32\x0b.posts.Post\x12\r\n\x05\x65rror\x18\x02 \x01(\t\"M\n\x11ListPostsResponse\x12\x1a\n\x05posts\x18\x01 \x03(\x0b\x32\x0b.posts.Post\x12\r\n\x05total\x18\x02 \x01(\x05\x12\r\n\x05\x65rror\x18\x03 \x01(\t\"/\n\x0bViewRequest\x12\x0f\n\x07post_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\x05\"/\n\x0bLikeRequest\x12\x0f\n\x07post_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\x05\"T\n\x0e\x43ommentRequest\x12\x0f\n\x07post_id\x18\x01 \x01(\t\x12\x0f\n\x07user_id\x18\x02 \x01(\x05\x12\x0c\n\x04text\x18\x03 \x01(\t\x12\x12\n\ncreated_at\x18\x04 \x01(\t\"Y\n\x07\x43omment\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07post_id\x18\x02 \x01(\t\x12\x0f\n\x07user_id\x18\x03 \x01(\x05\x12\x0c\n\x04text\x18\x04 \x01(\t\x12\x12\n\ncreated_at\x18\x05 \x01(\t\"B\n\x13ListCommentsRequest\x12\x0f\n\x07post_id\x18\x01 \x01(\t\x12\x0c\n\x04page\x18\x02 \x01(\x05\x12\x0c\n\x04size\x18\x03 \x01(\x05\"V\n\x14ListCommentsResponse\x12 \n\x08\x63omments\x18\x01 \x03(\x0b\x32\x0e.posts.Comment\x12\r\n\x05total\x18\x02 \x01(\x05\x12\r\n\x05\x65rror\x18\x03 \x01(\t2\xa4\x04\n\x0bPostService\x12;\n\nCreatePost\x12\x18.posts.CreatePostRequest\x1a\x13.posts.PostResponse\x12;\n\nDeletePost\x12\x18.posts.DeletePostRequest\x1a\x13.posts.PostResponse\x12;\n\nUpdatePost\x12\x18.posts.UpdatePostRequest\x1a\x13.posts.PostResponse\x12\x35\n\x07GetPost\x12\x15.posts.GetPostRequest\x1a\x13.posts.PostResponse\x12>\n\tListPosts\x12\x17.posts.ListPostsRequest\x1a\x18.posts.ListPostsResponse\x12\x33\n\x08ViewPost\x12\x12.posts.ViewRequest\x1a\x13.posts.PostResponse\x12\x33\n\x08LikePost\x12\x12.posts.LikeRequest\x1a\x13.posts.PostResponse\x12\x34\n\x0b\x43ommentPost\x12\x15.posts.CommentRequest\x1a\x0e.posts.Comment\x12G\n\x0cListComments\x12\x1a.posts.ListCommentsRequest\x1a\x1b.posts.ListCommentsResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -47,6 +47,18 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_POSTRESPONSE']._serialized_end=486
   _globals['_LISTPOSTSRESPONSE']._serialized_start=488
   _globals['_LISTPOSTSRESPONSE']._serialized_end=565
-  _globals['_POSTSERVICE']._serialized_start=568
-  _globals['_POSTSERVICE']._serialized_end=883
+  _globals['_VIEWREQUEST']._serialized_start=567
+  _globals['_VIEWREQUEST']._serialized_end=614
+  _globals['_LIKEREQUEST']._serialized_start=616
+  _globals['_LIKEREQUEST']._serialized_end=663
+  _globals['_COMMENTREQUEST']._serialized_start=665
+  _globals['_COMMENTREQUEST']._serialized_end=749
+  _globals['_COMMENT']._serialized_start=751
+  _globals['_COMMENT']._serialized_end=840
+  _globals['_LISTCOMMENTSREQUEST']._serialized_start=842
+  _globals['_LISTCOMMENTSREQUEST']._serialized_end=908
+  _globals['_LISTCOMMENTSRESPONSE']._serialized_start=910
+  _globals['_LISTCOMMENTSRESPONSE']._serialized_end=996
+  _globals['_POSTSERVICE']._serialized_start=999
+  _globals['_POSTSERVICE']._serialized_end=1547
 # @@protoc_insertion_point(module_scope)

@@ -1,11 +1,14 @@
 import grpc
 from concurrent import futures
 from datetime import datetime
+
 import post_pb2
 import post_pb2_grpc
+
 from database import SessionLocal, engine, Base
-from models import Post as PostModel
+from models import Post as PostModel, Comment as CommentModel
 from sqlalchemy.exc import SQLAlchemyError
+from kafka_producer import publish
 
 # Создаем таблицы в БД, если они не существуют
 Base.metadata.create_all(bind=engine)
@@ -140,13 +143,12 @@ class PostServiceServicer(post_pb2_grpc.PostServiceServicer):
             size = request.size
             user_id = request.user_id
             query = db.query(PostModel)
-            # Фильтруем: показываем посты, если они не приватные или принадлежат пользователю
             query = query.filter((PostModel.is_private == False) | (PostModel.creator_id == user_id))
             total = query.count()
             posts = query.offset((page - 1) * size).limit(size).all()
             grpc_posts = []
             for post_obj in posts:
-                grpc_post = post_pb2.Post(
+                grpc_posts.append(post_pb2.Post(
                     id=str(post_obj.id),
                     title=post_obj.title,
                     description=post_obj.description,
@@ -155,13 +157,77 @@ class PostServiceServicer(post_pb2_grpc.PostServiceServicer):
                     updated_at=post_obj.updated_at.isoformat(),
                     is_private=post_obj.is_private,
                     tags=post_obj.tags or []
-                )
-                grpc_posts.append(grpc_post)
+                ))
             return post_pb2.ListPostsResponse(posts=grpc_posts, total=total)
         except SQLAlchemyError as e:
             return post_pb2.ListPostsResponse(error=str(e))
         finally:
             db.close()
+
+    def ViewPost(self, request, context):
+        # Публикация события в Kafka
+        publish("post-view", {
+            "post_id": request.post_id,
+            "user_id": request.user_id,
+            "viewed_at": datetime.utcnow().isoformat()
+        })
+        # Возвращаем стандартный ответ GetPost
+        return self.GetPost(post_pb2.GetPostRequest(id=request.post_id, user_id=request.user_id), context)
+
+    def LikePost(self, request, context):
+        publish("post-like", {
+            "post_id": request.post_id,
+            "user_id": request.user_id,
+            "liked_at": datetime.utcnow().isoformat()
+        })
+        return self.GetPost(post_pb2.GetPostRequest(id=request.post_id, user_id=request.user_id), context)
+
+    def CommentPost(self, request, context):
+        db = SessionLocal()
+        try:
+            comment = CommentModel(
+                post_id=int(request.post_id),
+                user_id=request.user_id,
+                text=request.text,
+                created_at=datetime.utcnow()
+            )
+            db.add(comment)
+            db.commit()
+            db.refresh(comment)
+            grpc_comment = post_pb2.Comment(
+                id=str(comment.id),
+                post_id=request.post_id,
+                user_id=comment.user_id,
+                text=comment.text,
+                created_at=comment.created_at.isoformat()
+            )
+            publish("post-comment", {
+                "comment_id": comment.id,
+                "post_id": comment.post_id,
+                "user_id": comment.user_id,
+                "commented_at": comment.created_at.isoformat()
+            })
+            return grpc_comment
+        finally:
+            db.close()
+
+    def ListComments(self, request, context):
+        db = SessionLocal()
+        try:
+            q = db.query(CommentModel).filter(CommentModel.post_id == int(request.post_id))
+            total = q.count()
+            items = q.offset((request.page - 1) * request.size).limit(request.size).all()
+            grpc_list = [post_pb2.Comment(
+                id=str(c.id),
+                post_id=str(c.post_id),
+                user_id=c.user_id,
+                text=c.text,
+                created_at=c.created_at.isoformat()
+            ) for c in items]
+            return post_pb2.ListCommentsResponse(comments=grpc_list, total=total)
+        finally:
+            db.close()
+
 
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

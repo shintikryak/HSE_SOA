@@ -1,0 +1,45 @@
+syntax = "proto3";
+package stats;
+
+message PostId { string post_id = 1; }
+message UserId { int32 user_id = 1; }
+
+message CountResponse {
+  int64 views       = 1;
+  int64 likes       = 2;
+  int64 comments    = 3;
+}
+
+message TrendPoint {
+  string date = 1;  // YYYY-MM-DD
+  int64 count = 2;
+}
+
+message TrendRequest {
+  string post_id = 1;
+}
+
+message TrendResponse {
+  repeated TrendPoint data = 1;
+}
+
+enum Metric { VIEWS = 0; LIKES = 1; COMMENTS = 2; }
+
+message TopRequest {
+  Metric metric = 1;
+}
+
+message TopPost { string post_id = 1; int64 count = 2; }
+message TopUser { int32  user_id = 1; int64 count = 2; }
+
+message TopPostsResponse { repeated TopPost posts = 1; }
+message TopUsersResponse { repeated TopUser users = 1; }
+
+service StatsService {
+  rpc GetPostCounts (PostId) returns (CountResponse);
+  rpc GetPostViewsTrend    (TrendRequest) returns (TrendResponse);
+  rpc GetPostLikesTrend    (TrendRequest) returns (TrendResponse);
+  rpc GetPostCommentsTrend (TrendRequest) returns (TrendResponse);
+  rpc GetTopPosts (TopRequest) returns (TopPostsResponse);
+  rpc GetTopUsers (TopRequest) returns (TopUsersResponse);
+}
